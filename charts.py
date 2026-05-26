@@ -5,6 +5,7 @@ app.py calls these and passes the result to st.plotly_chart().
 """
 
 import plotly.express as px
+import plotly.graph_objects as go
 
 
 def monthly_trend_chart(monthly_df):
@@ -44,5 +45,30 @@ def region_pie_chart(region_df):
         values="total_sales",
         title="Revenue by Region",
         hole=0.3,              # donut style — looks cleaner than a full pie
+    )
+    return fig
+
+
+def heatmap_chart(pivot_df):
+    """
+    Heatmap: products on Y-axis, months on X-axis, color = revenue intensity.
+    Instantly shows which product was hot in which month — a chart type used
+    in real consulting dashboards because it packs a lot of information densely.
+    """
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=pivot_df.values,
+            x=list(pivot_df.columns),   # months
+            y=list(pivot_df.index),     # products
+            colorscale="Blues",
+            hoverongaps=False,
+            hovertemplate="Product: %{y}<br>Month: %{x}<br>Revenue: $%{z:,.0f}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title="Revenue Heatmap — Product × Month",
+        xaxis_title="Month",
+        yaxis_title="Product",
+        xaxis_tickangle=-45,
     )
     return fig

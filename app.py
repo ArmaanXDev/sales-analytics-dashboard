@@ -4,66 +4,131 @@ This file only handles the UI layout. All logic lives in the other modules.
 """
 
 import streamlit as st
+import pandas as pd
 import data_loader
 import charts
-import llm_helper
 
-# ── Page config ──────────────────────────────────────────────────────────────
+# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Sales Insights Assistant",
     page_icon="📊",
     layout="wide",
 )
 
-st.title("📊 Sales Insights Assistant")
-st.caption("A simple business analytics dashboard powered by AI")
+# Custom CSS — tighten metric card borders for a cleaner enterprise look
+st.markdown("""
+    <style>
+        [data-testid="metric-container"] {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .block-container { padding-top: 2rem; }
+    </style>
+""", unsafe_allow_html=True)
 
-# ── Load data ─────────────────────────────────────────────────────────────────
-# @st.cache_data caches the CSV so it isn't re-read on every UI interaction
+st.title("📊 Sales Insights Assistant")
+st.caption("Interactive business analytics dashboard — 2024 Sales Data")
+
+# ── Load full dataset once (cached) ──────────────────────────────────────────
 @st.cache_data
 def load_data():
     return data_loader.load_data()
 
-df = load_data()
+full_df = load_data()
+
+# ── Sidebar filters ───────────────────────────────────────────────────────────
+# The sidebar is what separates a basic script from a real BI tool.
+# Every selection here instantly updates all charts and metrics below.
+with st.sidebar:
+    st.header("Filters")
+
+    all_regions = sorted(full_df["region"].unique().tolist())
+    selected_regions = st.multiselect(
+        "Region",
+        options=all_regions,
+        default=all_regions,
+    )
+
+    all_products = sorted(full_df["product"].unique().tolist())
+    selected_products = st.multiselect(
+        "Product",
+        options=all_products,
+        default=all_products,
+    )
+
+    min_date = full_df["date"].min().date()
+    max_date = full_df["date"].max().date()
+    date_range = st.date_input(
+        "Date Range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date,
+    )
+
+    st.divider()
+    st.caption("Filters apply to all charts and metrics.")
+
+# Apply filters to create the working DataFrame
+# We only filter by date if the user selected both start and end
+if len(date_range) == 2:
+    start_date, end_date = date_range
+    df = full_df[
+        (full_df["region"].isin(selected_regions)) &
+        (full_df["product"].isin(selected_products)) &
+        (full_df["date"].dt.date >= start_date) &
+        (full_df["date"].dt.date <= end_date)
+    ]
+else:
+    df = full_df[
+        (full_df["region"].isin(selected_regions)) &
+        (full_df["product"].isin(selected_products))
+    ]
+
+# Guard against empty selection
+if df.empty:
+    st.warning("No data matches the selected filters. Adjust the sidebar.")
+    st.stop()
+
 stats = data_loader.get_summary_stats(df)
 
-# ── Section 1: Key Metrics ────────────────────────────────────────────────────
-st.header("Key Metrics")
+# ── Section 1: KPI Metrics ────────────────────────────────────────────────────
+st.header("Key Performance Indicators")
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    st.metric(
-        label="Total Revenue",
-        value=f"${stats['total_revenue']:,.0f}",
-    )
+    st.metric("Total Revenue", f"${stats['total_revenue']:,.0f}")
+
 with col2:
     st.metric(
-        label="Top Product",
-        value=stats["top_product"],
+        "Top Product",
+        stats["top_product"],
         delta=f"${stats['top_product_value']:,.0f}",
     )
+
 with col3:
-    st.metric(
-        label="Total Units Sold",
-        value=f"{stats['total_units']:,}",
-    )
+    st.metric("Total Units Sold", f"{stats['total_units']:,}")
+
 with col4:
+    st.metric("Total Transactions", f"{stats['num_transactions']:,}")
+
+with col5:
     st.metric(
-        label="Total Transactions",
-        value=f"{stats['num_transactions']:,}",
+        "MoM Revenue Growth",
+        f"{stats['mom_growth']:+.1f}%",
+        delta=f"{stats['mom_growth']:+.1f}%",
     )
 
 st.divider()
 
-# ── Section 2: Charts ─────────────────────────────────────────────────────────
-st.header("Sales Charts")
+# ── Section 2: Trend & Breakdown Charts ──────────────────────────────────────
+st.header("Revenue Analysis")
 
-# Monthly trend takes the full width — it's the most important chart
 monthly_df = data_loader.get_monthly_trend(df)
 st.plotly_chart(charts.monthly_trend_chart(monthly_df), use_container_width=True)
 
-# Product and region charts sit side by side
 col_left, col_right = st.columns(2)
 
 with col_left:
@@ -76,31 +141,36 @@ with col_right:
 
 st.divider()
 
-# ── Section 3: AI Q&A ─────────────────────────────────────────────────────────
-st.header("Ask a Question About the Data")
-st.write("Type any question in plain English — the AI will answer based on the actual sales data.")
+# ── Section 3: Heatmap ────────────────────────────────────────────────────────
+st.header("Product Performance Heatmap")
+st.caption("Darker = higher revenue. Quickly spot which product dominated which month.")
 
-user_question = st.text_input(
-    label="Your question",
-    placeholder="e.g. Which region had the lowest revenue? Which month saw the biggest spike?",
-)
-
-if st.button("Get Answer", type="primary"):
-    if user_question.strip() == "":
-        st.warning("Please enter a question first.")
-    else:
-        with st.spinner("Thinking..."):
-            answer = llm_helper.answer_question(df, stats, user_question)
-        st.success("Answer")
-        st.write(answer)
+pivot_df = data_loader.get_heatmap_data(df)
+st.plotly_chart(charts.heatmap_chart(pivot_df), use_container_width=True)
 
 st.divider()
 
-# ── Section 4: Insights Summary ───────────────────────────────────────────────
-st.header("Insights Summary")
-st.write("Click the button below to get an AI-generated summary of the key business takeaways.")
+# ── Section 4: Raw Data Explorer ─────────────────────────────────────────────
+st.header("Data Explorer")
 
-if st.button("Generate Insights Summary", type="secondary"):
-    with st.spinner("Generating summary..."):
-        summary = llm_helper.generate_insights_summary(df, stats)
-    st.info(summary)
+col_search, col_download = st.columns([3, 1])
+
+with col_search:
+    st.caption(f"Showing {len(df):,} transactions matching current filters.")
+
+with col_download:
+    # Convert DataFrame to CSV bytes so Streamlit can serve it as a file download
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label="Download CSV",
+        data=csv_bytes,
+        file_name="filtered_sales_data.csv",
+        mime="text/csv",
+    )
+
+# Show the filtered table — st.dataframe is interactive (sortable, scrollable)
+st.dataframe(
+    df.sort_values("date", ascending=False).reset_index(drop=True),
+    use_container_width=True,
+    height=300,
+)
