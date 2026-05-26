@@ -1,6 +1,10 @@
 # 📊 Sales Analytics Dashboard
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://armaanxdev-sales-insights-assistant-app-bxwts9.streamlit.app/)
+
 An interactive business analytics dashboard built with Python and Streamlit. Load a sales dataset, explore key metrics through dynamic charts, and filter data by region, product, and date — all in real time.
+
+**[🚀 Live Demo](https://armaanxdev-sales-insights-assistant-app-bxwts9.streamlit.app/)**
 
 ---
 
