@@ -10,7 +10,7 @@ import charts
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Sales Insights Assistant",
+    page_title="Sales Analytics Dashboard",
     page_icon="📊",
     layout="wide",
 )
@@ -28,7 +28,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 Sales Insights Assistant")
+st.title("📊 Sales Analytics Dashboard")
 st.caption("Interactive business analytics dashboard — 2024 Sales Data")
 
 # ── Load full dataset once (cached) ──────────────────────────────────────────

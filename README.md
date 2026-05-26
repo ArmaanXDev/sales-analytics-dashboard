@@ -1,4 +1,4 @@
-# 📊 Sales Insights Assistant
+# 📊 Sales Analytics Dashboard
 
 An interactive business analytics dashboard built with Python and Streamlit. Load a sales dataset, explore key metrics through dynamic charts, and filter data by region, product, and date — all in real time.
 
