@@ -1,0 +1,13 @@
+# Secret keys — NEVER commit these
+.env
+
+# Python cache files — auto-generated, not needed in git
+__pycache__/
+*.pyc
+
+# Virtual environment folder
+venv/
+.venv/
+
+# Claude Code internal config
+.claude/
